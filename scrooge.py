@@ -7,7 +7,7 @@
 # Usage:
 # $ python3 scrooge.py
 #########################################################################################
-__version__ = 1.112
+__version__ = 1.113
 
 
 # import libraries
@@ -19,13 +19,13 @@ import pandas as pd
 FILE_PATH = '20201026a.pdf'
 
 
-# # read PDF
+# read PDF
 # pdfFileObj = open(FILE_PATH, 'rb')
 # pdfReader = PyPDF2.PdfFileReader(pdfFileObj)
-# # find and print number of pages
+# find and print number of pages
 # np = pdfReader.numPages
 # print(f'Number of pages: {np}')
-# # get the contents of page 1
+# get the contents of page 1
 # pageObj = pdfReader.getPage(2)
 # a = pageObj.extractText()
 # print(a)
@@ -36,12 +36,31 @@ class Cc(object):
     """
     Documentation
     """
-    def __init__(self):
-        self.file = None
-        self.expenses = None
+    def __init__(self, statementfile):
+        print(f'Creating credit card statement')
+        self.filename = statementfile
+        self.pdfreader = self.readstatement()
+        self.numpages = self.getnumberofpages()
+        self.expenses = self.getcontentspage(2)
 
     def readstatement(self):
-        pass
+        pdfFileObj = open(self.filename, 'rb')
+        print(f'Opened file [{self.filename}]')
+        pdfReader = PyPDF2.PdfFileReader(pdfFileObj)
+        print(f'Read [{self.filename}] PDF contents')
+        return pdfReader
+
+    def getnumberofpages(self):
+        np = self.pdfreader.numPages
+        print(f'Identifying number of pages')
+        return np
+
+    def getcontentspage(self, num):
+        pgobj = self.pdfreader.getPage(num)
+        print(f'Retrieving contents of page {num}')
+        pg = pgobj.extractText()
+        print(f'Done')
+        return pg
 
     def savecsv(self):
         pass
@@ -80,7 +99,10 @@ def main():
     print('\n===========================================================================')
     print('                                 Scrooge')
     print('===========================================================================\n')
-
+    # Create Credit Card instance
+    cc1 = Cc(FILE_PATH)
+    # print contents
+    print(cc1.expenses)
     print('\n=========================== END OF PROGRAM ==============================--\n')
 
 
