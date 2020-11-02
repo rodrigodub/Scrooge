@@ -7,7 +7,7 @@
 # Usage:
 # $ python3 scrooge.py
 #########################################################################################
-__version__ = 1.113
+__version__ = 1.114
 
 
 # import libraries
@@ -16,19 +16,8 @@ import pandas as pd
 
 
 # global variables
-FILE_PATH = '20201026a.pdf'
-
-
-# read PDF
-# pdfFileObj = open(FILE_PATH, 'rb')
-# pdfReader = PyPDF2.PdfFileReader(pdfFileObj)
-# find and print number of pages
-# np = pdfReader.numPages
-# print(f'Number of pages: {np}')
-# get the contents of page 1
-# pageObj = pdfReader.getPage(2)
-# a = pageObj.extractText()
-# print(a)
+FILE_PATH = '20190226a.pdf'
+# FILE_PATH = '20201026a.pdf'
 
 
 # CreditCard statement Class
@@ -38,10 +27,13 @@ class Cc(object):
     """
     def __init__(self, statementfile):
         print(f'Creating credit card statement')
+        # read the file contents
         self.filename = statementfile
         self.pdfreader = self.readstatement()
+        # define number of pages
         self.numpages = self.getnumberofpages()
-        self.expenses = self.getcontentspage(2)
+        # iterate through pages and create a list with their raw contents
+        self.rawexpenses = [self.getcontentspage(i) for i in range(self.getnumberofpages())]
 
     def readstatement(self):
         pdfFileObj = open(self.filename, 'rb')
@@ -102,7 +94,7 @@ def main():
     # Create Credit Card instance
     cc1 = Cc(FILE_PATH)
     # print contents
-    print(cc1.expenses)
+    [print(i) for i in cc1.rawexpenses]
     print('\n=========================== END OF PROGRAM ==============================--\n')
 
 
