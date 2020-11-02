@@ -8,7 +8,7 @@
 
 import PyPDF2
 
-FILE_PATH = '20201026a.pdf'
+FILE_PATH = '../20201026a.pdf'
 
 with open(FILE_PATH, mode='rb') as f:        
     reader = PyPDF2.PdfFileReader(f)
