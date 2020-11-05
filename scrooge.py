@@ -7,7 +7,7 @@
 # Usage:
 # $ python3 scrooge.py
 #########################################################################################
-__version__ = 1.118
+__version__ = 1.119
 
 
 # import libraries
@@ -16,8 +16,9 @@ import pandas as pd
 
 
 # global variables
-# FILE_PATH = '20190226a.pdf'
-FILE_PATH = '20201026a.pdf'
+FILE_PATH = '20190226a.pdf'
+# FILE_PATH = '20201026a.pdf'
+EXCEPTIONS = ['OPENING BALANCE', 'HSBC BANK PAYMENT', 'CLOSING BALANCE', 'ORIGINAL TRANSACTION AMOUNT', 'OVERSEAS TRANSACTION FEE']
 
 
 # CreditCard statement Class
@@ -98,8 +99,20 @@ class Cc(object):
                 if item:
                     result6.append(lineprefix + item)
                 lineprefix = ''
+        # 7. skip exceptions
+        result7 = result6.copy()
+        for item in result7:
+            for exc in EXCEPTIONS:
+                if exc in item:
+                    result7.remove(item)
+        # 7. skip exceptions
+        result8 = result7.copy()
+        for item in result8:
+            for exc in EXCEPTIONS:
+                if exc in item:
+                    result8.remove(item)
         # final results
-        result = result6
+        result = result8
         return result
 
     def savecsv(self):
