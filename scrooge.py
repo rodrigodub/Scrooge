@@ -7,7 +7,7 @@
 # Usage:
 # $ python3 scrooge.py
 #########################################################################################
-__version__ = 1.117
+__version__ = 1.118
 
 
 # import libraries
@@ -16,8 +16,8 @@ import pandas as pd
 
 
 # global variables
-FILE_PATH = '20190226a.pdf'
-# FILE_PATH = '20201026a.pdf'
+# FILE_PATH = '20190226a.pdf'
+FILE_PATH = '20201026a.pdf'
 
 
 # CreditCard statement Class
@@ -56,38 +56,50 @@ class Cc(object):
         return pg
 
     def processexpenses(self):
-        # take the raw expenses
+        # 1. take the raw expenses
         raw = self.rawexpenses
-        # define the splitter strings
+        # 2. define the splitter strings
         headerstr = "\nTransaction DateCard UsedTransaction DetailAmount"
         pagesplitter = f" of {self.numpages}"
         endsplitter = "+--= Rewards Points Summary"
-        # find which page the header is shown
+        # 3. find which page the header is shown
         startpage = [index for index, item in enumerate(raw) if headerstr in item][0]
         result1 = raw[startpage:]
-        # remove everything before header
+        # 4. take only the relevant parts
+        # 4.1. remove everything before header
         result2 = [i.split(headerstr)[1] if headerstr in i else i for i in result1]
-        # remove everything before the page splitter
+        # 4.2. remove everything before the page splitter
         result3 = [i.split(pagesplitter)[1] if pagesplitter in i else i for i in result2]
-        # remove everything after the last expenses
+        # 4.3. remove everything after the last expenses
         result4 = [i.split(endsplitter)[0] if endsplitter in i else i for i in result3]
         result4 = [i for i in result4 if i]
-        # # create new list with individual expenses
+        # 5. create new list with individual expenses
         result5 = []
         initial = 0
-        # a) iterate through original strings
+        # 5.1. iterate through original strings
         for page in result4:
-            # b) find the indexes to split.
-            #    Positions of '.' plus 2 'cents' digits. Except the last position
+            # 5.2. find the indexes to split.
+            #      Positions of '.' plus 2 'cents' digits. Except the last position
             indexes = [i + 3 for i in range(len(page)) if page.startswith('.', i)][:-1]
-            # c) iterate the string to build final list
+            # 5.3. iterate the string to build final list
             for idx in indexes:
                 result5.append(page[initial:idx])
                 initial = idx
-            # d) append the last activity
+            # 5.4. append the last activity
             result5.append(page[indexes[-1:][0]:])
+        # 6. concatenate broken lines
+        result6 = []
+        lineprefix = ''
+        for item in result5:
+            # cases: a) with '.COM', b) with 'HELP.'
+            if item[-3:] == '.CO' or item[-7:-2] == 'HELP.':
+                lineprefix = item
+            else:
+                if item:
+                    result6.append(lineprefix + item)
+                lineprefix = ''
         # final results
-        result = result5
+        result = result6
         return result
 
     def savecsv(self):
