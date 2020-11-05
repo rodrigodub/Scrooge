@@ -2,12 +2,12 @@
 # Scrooge
 # Automation of Mastercard statement data extraction and classification
 # Author: Rodrigo Nobrega
-# 20150407-20201102
+# 20150407-20201105
 #
 # Usage:
 # $ python3 scrooge.py
 #########################################################################################
-__version__ = 1.114
+__version__ = 1.115
 
 
 # import libraries
@@ -34,6 +34,7 @@ class Cc(object):
         self.numpages = self.getnumberofpages()
         # iterate through pages and create a list with their raw contents
         self.rawexpenses = [self.getcontentspage(i) for i in range(self.getnumberofpages())]
+        self.processed = self.processexpenses()
 
     def readstatement(self):
         pdfFileObj = open(self.filename, 'rb')
@@ -53,6 +54,23 @@ class Cc(object):
         pg = pgobj.extractText()
         print(f'Done')
         return pg
+
+    def processexpenses(self):
+        # take the raw expenses
+        raw = self.rawexpenses
+        # define the header and page splitter
+        headerstr = "\nTransaction DateCard UsedTransaction DetailAmount"
+        pagesplitter = f' of {self.numpages}'
+        # find which page the header is shown
+        startpage = [index for index, item in enumerate(raw) if headerstr in item][0]
+        result1 = raw[startpage:]
+        # remove everything before header
+        result2 = [i.split(headerstr)[1] if headerstr in i else i for i in result1]
+        # remove everything before the page splitter
+        result3 = [i.split(pagesplitter)[1] if pagesplitter in i else i for i in result2]
+        # final results
+        result = result3
+        return result
 
     def savecsv(self):
         pass
@@ -94,7 +112,9 @@ def main():
     # Create Credit Card instance
     cc1 = Cc(FILE_PATH)
     # print contents
-    [print(i) for i in cc1.rawexpenses]
+    # [print(i) for i in cc1.rawexpenses]
+    print('\n---------------------------------------\n')
+    [print(i) for i in cc1.processed]
     print('\n=========================== END OF PROGRAM ==============================--\n')
 
 
