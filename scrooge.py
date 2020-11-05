@@ -7,7 +7,7 @@
 # Usage:
 # $ python3 scrooge.py
 #########################################################################################
-__version__ = 1.115
+__version__ = 1.116
 
 
 # import libraries
@@ -58,9 +58,10 @@ class Cc(object):
     def processexpenses(self):
         # take the raw expenses
         raw = self.rawexpenses
-        # define the header and page splitter
+        # define the splitter strings
         headerstr = "\nTransaction DateCard UsedTransaction DetailAmount"
-        pagesplitter = f' of {self.numpages}'
+        pagesplitter = f" of {self.numpages}"
+        endsplitter = "= Rewards Points Summary"
         # find which page the header is shown
         startpage = [index for index, item in enumerate(raw) if headerstr in item][0]
         result1 = raw[startpage:]
@@ -68,8 +69,23 @@ class Cc(object):
         result2 = [i.split(headerstr)[1] if headerstr in i else i for i in result1]
         # remove everything before the page splitter
         result3 = [i.split(pagesplitter)[1] if pagesplitter in i else i for i in result2]
+        # remove everythin after the last expenses
+        result4 = [i.split(endsplitter)[0] if endsplitter in i else i for i in result3]
+        # create new list with individual expenses
+        result5 = []
+        # a) iterate through original strings
+        for page in result4:
+            # b) find the indexes to split.
+            #    Positions of '.' plus 2 'cents' digits. Except the last position
+            indexes = [i + 3 for i in range(len(page)) if page.startswith('.', i)][:-1]
+            # c) append the first activity
+            result5.append(page[:indexes[0]])
+            # d) iterate the string to build final list
+            for idx in indexes[1:]:
+                latest = result5[-1:][0]
+                result5.append(page[:idx].split(latest)[1])
         # final results
-        result = result3
+        result = result5
         return result
 
     def savecsv(self):
