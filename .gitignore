@@ -19,3 +19,4 @@ __pycache__/scrooge.cpython-37.pyc
 __pycache__/app.cpython-311.pyc
 .idea/inspectionProfiles/profiles_settings.xml
 .idea/vcs.xml
+.env

@@ -2,12 +2,12 @@
 # Scrooge
 # Automation of Mastercard statement .data extraction and classification
 # Author: Rodrigo Nobrega
-# 20150407-20201105
+# 20150407-20240714
 #
 # Usage:
 # $ python3 scrooge.py
 #########################################################################################
-__version__ = 1.119
+__version__ = 1.501
 
 
 # import libraries
@@ -40,19 +40,33 @@ class Cc(object):
     def readstatement(self):
         pdfFileObj = open(self.filename, 'rb')
         print(f'Opened file [{self.filename}]')
-        pdfReader = PyPDF2.PdfFileReader(pdfFileObj)
+        # pdfReader = PyPDF2.PdfFileReader(pdfFileObj)
+        pdfReader = PyPDF2.PdfReader(pdfFileObj)
         print(f'Read [{self.filename}] PDF contents')
+
+        # Check if the PDF is encrypted
+        if pdfReader.is_encrypted:
+            try:
+                # Try to decrypt the PDF with the provided password
+                pdfReader.decrypt("03011971ROD")
+            except Exception as e:
+                print(f"Failed to decrypt PDF: {e}")
+                return None
+
         return pdfReader
 
     def getnumberofpages(self):
-        np = self.pdfreader.numPages
+        # np = self.pdfreader.numPages
+        np = len(self.pdfreader.pages)
         print(f'Identifying number of pages')
         return np
 
     def getcontentspage(self, num):
-        pgobj = self.pdfreader.getPage(num)
+        # pgobj = self.pdfreader.getPage(num)
+        pgobj = self.pdfreader.pages[num]
         print(f'Retrieving contents of page {num}')
-        pg = pgobj.extractText()
+        # pg = pgobj.extractText()
+        pg = pgobj.extract_text()
         print(f'Done')
         return pg
 
