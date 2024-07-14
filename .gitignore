@@ -12,3 +12,8 @@
 __pycache__/scrooge.cpython-37.pyc
 20190226a.pdf
 20190226 Email Statement.pdf
+.DS_Store
+/.data
+*.pdf
+/.idea
+__pycache__/app.cpython-311.pyc
