@@ -1,9 +1,9 @@
 # Scrooge
 
-##### Version 1.119
+##### Version 1.502
 ##### Author: Rodrigo Nobrega
 ##### Created: 2015.04.07
-##### Updated: 2020.11.05
+##### Updated: 2024.07.22
 
 ---
 

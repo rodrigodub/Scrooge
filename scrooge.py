@@ -2,15 +2,17 @@
 # Scrooge
 # Automation of Mastercard statement .data extraction and classification
 # Author: Rodrigo Nobrega
-# 20150407-20240714
+# 20150407-20240722
 #
 # Usage:
 # $ python3 scrooge.py
 #########################################################################################
-__version__ = 1.501
+__version__ = 1.502
 
 
 # import libraries
+import os
+from dotenv import load_dotenv
 import PyPDF2
 import pandas as pd
 
@@ -48,7 +50,7 @@ class Cc(object):
         if pdfReader.is_encrypted:
             try:
                 # Try to decrypt the PDF with the provided password
-                pdfReader.decrypt("03011971ROD")
+                pdfReader.decrypt(self.get_env_variable(".env", "CC"))
             except Exception as e:
                 print(f"Failed to decrypt PDF: {e}")
                 return None
@@ -128,6 +130,16 @@ class Cc(object):
         # final results
         result = result8
         return result
+
+    def get_env_variable(self, env_file, variable_name):
+        """"""
+        # Load the .env file
+        # load_dotenv(env_file)
+        with open(env_file, "r") as f:
+            contents = f.read().split("\n")
+
+        # Retrieve the variable value
+        return os.getenv(variable_name)
 
     def savecsv(self):
         pass
