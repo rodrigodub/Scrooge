@@ -20,6 +20,6 @@ def get_env_variable(env_file, variable_name):
 
 # Example usage:
 env_file = '.env'
-variable_name = 'DATABASE_PASSWORD'
+variable_name = 'CC'
 password = get_env_variable(env_file, variable_name)
 print(f"The value of {variable_name} is: {password}")

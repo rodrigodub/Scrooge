@@ -2,12 +2,12 @@
 # Scrooge
 # Automation of Mastercard statement .data extraction and classification
 # Author: Rodrigo Nobrega
-# 20150407-20240722
+# 20150407-20240723
 #
 # Usage:
 # $ python3 scrooge.py
 #########################################################################################
-__version__ = 1.502
+__version__ = 1.504
 
 
 # import libraries
@@ -18,6 +18,7 @@ import pandas as pd
 
 
 # global variables
+ENVIRONMENT = ".env"
 FILE_PATH = '20190226a.pdf'
 # FILE_PATH = '20201026a.pdf'
 EXCEPTIONS = ['OPENING BALANCE', 'HSBC BANK PAYMENT', 'CLOSING BALANCE', 'ORIGINAL TRANSACTION AMOUNT', 'OVERSEAS TRANSACTION FEE']
@@ -36,26 +37,26 @@ class Cc(object):
         # define number of pages
         self.numpages = self.getnumberofpages()
         # iterate through pages and create a list with their raw contents
-        self.rawexpenses = [self.getcontentspage(i) for i in range(self.getnumberofpages())]
+        self.rawexpenses = [self.getcontentspage(i) for i in range(self.numpages)]
         self.processed = self.processexpenses()
 
     def readstatement(self):
-        pdfFileObj = open(self.filename, 'rb')
+        pdf_file_object = open(self.filename, 'rb')
         print(f'Opened file [{self.filename}]')
-        # pdfReader = PyPDF2.PdfFileReader(pdfFileObj)
-        pdfReader = PyPDF2.PdfReader(pdfFileObj)
+        # pdf_reader = PyPDF2.PdfFileReader(pdf_file_object)
+        pdf_reader = PyPDF2.PdfReader(pdf_file_object)
         print(f'Read [{self.filename}] PDF contents')
 
         # Check if the PDF is encrypted
-        if pdfReader.is_encrypted:
+        if pdf_reader.is_encrypted:
             try:
                 # Try to decrypt the PDF with the provided password
-                pdfReader.decrypt(self.get_env_variable(".env", "CC"))
+                pdf_reader.decrypt(self.get_env_variable(".env", "CC"))
             except Exception as e:
                 print(f"Failed to decrypt PDF: {e}")
                 return None
 
-        return pdfReader
+        return pdf_reader
 
     def getnumberofpages(self):
         # np = self.pdfreader.numPages
@@ -72,13 +73,20 @@ class Cc(object):
         print(f'Done')
         return pg
 
+    # def processexpenses(self):
+    #     expenses = []
+    #     for i in range(len(self.rawexpenses)):
+    #         pass
+
     def processexpenses(self):
         # 1. take the raw expenses
         raw = self.rawexpenses
         # 2. define the splitter strings
-        headerstr = "\nTransaction DateCard UsedTransaction DetailAmount"
+        # headerstr = "\nTransaction DateCard UsedTransaction DetailAmount"
+        headerstr = "\nTransaction Date Card Used Transaction Detail Amount\n"
         pagesplitter = f" of {self.numpages}"
-        endsplitter = "+--= Rewards Points Summary"
+        # endsplitter = "+--= Rewards Points Summary"
+        endsplitter = "+ - - = Rewards Points Summary"
         # 3. find which page the header is shown
         startpage = [index for index, item in enumerate(raw) if headerstr in item][0]
         result1 = raw[startpage:]
@@ -131,12 +139,14 @@ class Cc(object):
         result = result8
         return result
 
+
+
     def get_env_variable(self, env_file, variable_name):
         """"""
         # Load the .env file
-        # load_dotenv(env_file)
-        with open(env_file, "r") as f:
-            contents = f.read().split("\n")
+        load_dotenv(env_file)
+        # with open(env_file, "r") as f:
+        #     contents = f.read().split("\n")
 
         # Retrieve the variable value
         return os.getenv(variable_name)
@@ -178,13 +188,27 @@ def main():
     print('\n===========================================================================')
     print('                                 Scrooge')
     print('===========================================================================\n')
+    statement = ".data/2406 Email Statement.pdf"
+    # pdf_file_object = open(statement, 'rb')
+    #
+    # pdf_reader = PyPDF2.PdfReader(pdf_file_object)
+    # print(f"pdf_reader.is_encrypted: {pdf_reader.is_encrypted}")
+    #
+    # pwd = Cc(statement).get_env_variable(".env", "CC")
+    # print(f"Password: {pwd}\n")
+
     # Create Credit Card instance
-    cc1 = Cc(FILE_PATH)
+    # cc1 = Cc(FILE_PATH)
+    cc1 = Cc(statement)
+
+    print(f"Number of pages: {cc1.numpages}")
     # print contents
     # [print(i) for i in cc1.rawexpenses]
     print('\n---------------------------------------\n')
-    [print(i) for i in cc1.processed]
+    # [print(i) for i in cc1.processed]
     print('\n=========================== END OF PROGRAM ==============================--\n')
+
+    return cc1
 
 
 # main, calling main loop
