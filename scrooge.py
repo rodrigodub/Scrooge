@@ -2,16 +2,17 @@
 # Scrooge
 # Automation of Mastercard statement .data extraction and classification
 # Author: Rodrigo Nobrega
-# 20150407-20240723
+# 20150407-20240727
 #
 # Usage:
 # $ python3 scrooge.py
 #########################################################################################
-__version__ = 1.504
+__version__ = 1.505
 
 
 # import libraries
 import os
+from datetime import datetime
 from dotenv import load_dotenv
 import PyPDF2
 import pandas as pd
@@ -21,32 +22,33 @@ import pandas as pd
 ENVIRONMENT = ".env"
 FILE_PATH = '20190226a.pdf'
 # FILE_PATH = '20201026a.pdf'
-EXCEPTIONS = ['OPENING BALANCE', 'HSBC BANK PAYMENT', 'CLOSING BALANCE', 'ORIGINAL TRANSACTION AMOUNT', 'OVERSEAS TRANSACTION FEE']
+EXCEPTIONS = ['OPENING BALANCE', 'HSBC BANK PAYMENT', 'CLOSING BALANCE', 'ORIGINAL TRANSACTION AMOUNT',
+              'OVERSEAS TRANSACTION FEE']
 
 
 # CreditCard statement Class
-class Cc(object):
+class CreditCard(object):
     """
     Documentation
     """
-    def __init__(self, statementfile):
+    def __init__(self, bank_statement_file):
         print(f'Creating credit card statement')
         # read the file contents
-        self.filename = statementfile
-        self.pdfreader = self.readstatement()
+        self.filename = bank_statement_file
+        self.pdfreader = self.read_bank_statement()
         # define number of pages
-        self.numpages = self.getnumberofpages()
+        self.num_pages = self.get_number_of_pages()
         # iterate through pages and create a list with their raw contents
-        self.rawexpenses = [self.getcontentspage(i) for i in range(self.numpages)]
-        self.processed = self.processexpenses()
+        self.raw_expenses = [self.get_contents_page(i) for i in range(self.num_pages)]
+        # process expenses
+        self.expenses, self.payments = self.read_expenses()
 
-    def readstatement(self):
+    def read_bank_statement(self):
         pdf_file_object = open(self.filename, 'rb')
         print(f'Opened file [{self.filename}]')
         # pdf_reader = PyPDF2.PdfFileReader(pdf_file_object)
         pdf_reader = PyPDF2.PdfReader(pdf_file_object)
         print(f'Read [{self.filename}] PDF contents')
-
         # Check if the PDF is encrypted
         if pdf_reader.is_encrypted:
             try:
@@ -55,99 +57,66 @@ class Cc(object):
             except Exception as e:
                 print(f"Failed to decrypt PDF: {e}")
                 return None
-
         return pdf_reader
 
-    def getnumberofpages(self):
+    def get_number_of_pages(self):
         # np = self.pdfreader.numPages
         np = len(self.pdfreader.pages)
         print(f'Identifying number of pages')
         return np
 
-    def getcontentspage(self, num):
-        # pgobj = self.pdfreader.getPage(num)
+    def get_contents_page(self, num):
         pgobj = self.pdfreader.pages[num]
-        print(f'Retrieving contents of page {num}')
-        # pg = pgobj.extractText()
         pg = pgobj.extract_text()
-        print(f'Done')
+        print(f'Retrieved contents of page {num}')
         return pg
 
-    # def processexpenses(self):
-    #     expenses = []
-    #     for i in range(len(self.rawexpenses)):
-    #         pass
+    def return_date(self, string):
+        try:
+            # Attempt to parse the first part of the string as a date
+            date = datetime.strptime(string.split(" ")[0], '%d/%m/%y')
+            return date
+        except ValueError:
+            return None
 
-    def processexpenses(self):
-        # 1. take the raw expenses
-        raw = self.rawexpenses
-        # 2. define the splitter strings
-        # headerstr = "\nTransaction DateCard UsedTransaction DetailAmount"
-        headerstr = "\nTransaction Date Card Used Transaction Detail Amount\n"
-        pagesplitter = f" of {self.numpages}"
-        # endsplitter = "+--= Rewards Points Summary"
-        endsplitter = "+ - - = Rewards Points Summary"
-        # 3. find which page the header is shown
-        startpage = [index for index, item in enumerate(raw) if headerstr in item][0]
-        result1 = raw[startpage:]
-        # 4. take only the relevant parts
-        # 4.1. remove everything before header
-        result2 = [i.split(headerstr)[1] if headerstr in i else i for i in result1]
-        # 4.2. remove everything before the page splitter
-        result3 = [i.split(pagesplitter)[1] if pagesplitter in i else i for i in result2]
-        # 4.3. remove everything after the last expenses
-        result4 = [i.split(endsplitter)[0] if endsplitter in i else i for i in result3]
-        result4 = [i for i in result4 if i]
-        # 5. create new list with individual expenses
-        result5 = []
-        initial = 0
-        # 5.1. iterate through original strings
-        for page in result4:
-            # 5.2. find the indexes to split.
-            #      Positions of '.' plus 2 'cents' digits. Except the last position
-            indexes = [i + 3 for i in range(len(page)) if page.startswith('.', i)][:-1]
-            # 5.3. iterate the string to build final list
-            for idx in indexes:
-                result5.append(page[initial:idx])
-                initial = idx
-            # 5.4. append the last activity
-            result5.append(page[indexes[-1:][0]:])
-        # 6. concatenate broken lines
-        result6 = []
-        lineprefix = ''
-        for item in result5:
-            # cases: a) with '.COM', b) with 'HELP.'
-            if item[-3:] == '.CO' or item[-7:-2] == 'HELP.':
-                lineprefix = item
-            else:
-                if item:
-                    result6.append(lineprefix + item)
-                lineprefix = ''
-        # 7. skip exceptions
-        result7 = result6.copy()
-        for item in result7:
-            for exc in EXCEPTIONS:
-                if exc in item:
-                    result7.remove(item)
-        # 7. skip exceptions
-        result8 = result7.copy()
-        for item in result8:
-            for exc in EXCEPTIONS:
-                if exc in item:
-                    result8.remove(item)
-        # final results
-        result = result8
-        return result
+    def read_expenses(self):
+        transactions_only = []
+        # concatenate all pages from the PDF
+        all_lines = "\n".join(self.raw_expenses)
+        # one entry per line
+        all_lines = all_lines.split("\n")
+        # select only lines that start with a date
+        for line in all_lines:
+            if self.return_date(line):
+                transactions_only.append(line)
 
+        # Filtering the strings list
+        expenses_list = [
+            string for string in transactions_only
+            if not any(string_part in string for string_part in EXCEPTIONS)
+        ]
+        payments_list = [
+            string for string in transactions_only
+            if any(string_part in string for string_part in EXCEPTIONS)
+        ]
 
+        # create dataframes
+        expenses_df = pd.DataFrame([[i.split(" ")[0],
+                                     i.split(" ")[1],
+                                     " ".join(i.split(" ")[2:-1]),
+                                     i.split(" ")[-1]] for i in expenses_list],
+                                   columns=["Date", "Card", "Transaction", "Amount"])
+        payments_df = pd.DataFrame([[i.split(" ")[0],
+                                     " ".join(i.split(" ")[1:-1]),
+                                     i.split(" ")[-1]] for i in payments_list],
+                                   columns=["Date", "Transaction", "Amount"])
+        # output dataframes
+        return expenses_df, payments_df
 
     def get_env_variable(self, env_file, variable_name):
         """"""
         # Load the .env file
         load_dotenv(env_file)
-        # with open(env_file, "r") as f:
-        #     contents = f.read().split("\n")
-
         # Retrieve the variable value
         return os.getenv(variable_name)
 
@@ -199,9 +168,9 @@ def main():
 
     # Create Credit Card instance
     # cc1 = Cc(FILE_PATH)
-    cc1 = Cc(statement)
+    cc1 = CreditCard(statement)
 
-    print(f"Number of pages: {cc1.numpages}")
+    print(f"Number of pages: {cc1.num_pages}")
     # print contents
     # [print(i) for i in cc1.rawexpenses]
     print('\n---------------------------------------\n')
