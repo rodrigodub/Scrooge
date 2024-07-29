@@ -2,13 +2,12 @@
 # Scrooge
 # Automation of Mastercard statement .data extraction and classification
 # Author: Rodrigo Nobrega
-# 20150407-20240727
+# 20150407-20240728
 #
 # Usage:
 # $ python3 scrooge.py
 #########################################################################################
-__version__ = 1.505
-
+__version__ = 1.506
 
 # import libraries
 import os
@@ -16,7 +15,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 import PyPDF2
 import pandas as pd
-
+import duckdb
 
 # global variables
 ENVIRONMENT = ".env"
@@ -31,6 +30,7 @@ class CreditCard(object):
     """
     Documentation
     """
+
     def __init__(self, bank_statement_file):
         print(f'Creating credit card statement')
         # read the file contents
@@ -105,11 +105,20 @@ class CreditCard(object):
                                      i.split(" ")[1],
                                      " ".join(i.split(" ")[2:-1]),
                                      i.split(" ")[-1]] for i in expenses_list],
-                                   columns=["Date", "Card", "Transaction", "Amount"])
+                                   columns=["date", "card", "transaction", "amount"])
         payments_df = pd.DataFrame([[i.split(" ")[0],
                                      " ".join(i.split(" ")[1:-1]),
                                      i.split(" ")[-1]] for i in payments_list],
-                                   columns=["Date", "Transaction", "Amount"])
+                                   columns=["date", "transaction", "amount"])
+
+        # convert amount to float
+        expenses_df["amount"] = expenses_df["amount"].apply(lambda x: self.convert_amount_to_float(x))
+        payments_df["amount"] = payments_df["amount"].apply(lambda x: self.convert_amount_to_float(x))
+
+        # convert date to datetime
+        expenses_df["date"] = expenses_df["date"].apply(lambda x: self.return_date(x))
+        payments_df["date"] = payments_df["date"].apply(lambda x: self.return_date(x))
+
         # output dataframes
         return expenses_df, payments_df
 
@@ -120,18 +129,52 @@ class CreditCard(object):
         # Retrieve the variable value
         return os.getenv(variable_name)
 
+    def convert_amount_to_float(self, amount):
+        try:
+            amount_float = float(amount.replace("$", "").replace(",", ""))
+        except:
+            amount_float = 0
+        return amount_float
+
     def savecsv(self):
         pass
 
 
 # Persist statement class
-class Persist(object):
+class Persistence(object):
     """
     Class to store statement results in a database, assign expenses
     into known categories and classify unknown categories
     """
+
     def __init__(self):
-        self.db = None
+        self.con = duckdb.connect(database='persist.duckdb', read_only=False)
+        self.categories = self.read_table_to_dataframe("categories")
+
+    def read_table_to_dataframe(self, table_name):
+        # Execute a query to fetch the table contents into a DataFrame
+        df = self.con.execute(f"SELECT * FROM {table_name}").df()
+        # Close the connection and return dataframe
+        # self.con.close()
+        return df
+
+    def add_transactions(self, transactions: CreditCard):
+        next_expenses_id = self.con.sql("select max(id)+1 from {}".format("expenses")).fetchone()[0]
+        # existing data - from DuckDB to dataframe
+        existing_expenses = self.con.sql("SELECT * FROM expenses").df()
+        existing_payments = self.con.sql("SELECT * FROM payments").df()
+        # new_transactions = self.read_table_to_dataframe(table)
+        existing_expenses["amount"] = existing_expenses["amount"].apply(lambda x: round(x, 2))
+        # compare existing with the new dataframe and take only the differences
+        new_expenses = pd.merge(transactions.expenses, existing_expenses,
+                                how="left", on=["date", "card", "transaction", "amount"],
+                                indicator=True)
+        new_expenses = new_expenses[new_expenses["_merge"] == "left_only"][["date", "card", "transaction", "amount"]]
+        new_expenses = new_expenses.sort_values("date")
+        new_expenses = new_expenses.reset_index(drop=True)
+        new_expenses["id"] = new_expenses.index + next_expenses_id
+
+        return new_expenses
 
     def assign(self):
         pass
@@ -148,6 +191,7 @@ class Visualise(object):
     """
     Matplotlib?
     """
+
     def __init__(self):
         pass
 
@@ -183,5 +227,3 @@ def main():
 # main, calling main loop
 if __name__ == '__main__':
     main()
-
-
