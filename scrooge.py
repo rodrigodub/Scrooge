@@ -2,12 +2,12 @@
 # Scrooge
 # Automation of Mastercard statement .data extraction and classification
 # Author: Rodrigo Nobrega
-# 20150407-20240728
+# 20150407-20240804
 #
 # Usage:
 # $ python3 scrooge.py
 #########################################################################################
-__version__ = 1.506
+__version__ = 1.507
 
 # import libraries
 import os
@@ -32,7 +32,7 @@ class CreditCard(object):
     """
 
     def __init__(self, bank_statement_file):
-        print(f'Creating credit card statement')
+        print('\nCREDIT CARD:\n Creating credit card statement')
         # read the file contents
         self.filename = bank_statement_file
         self.pdfreader = self.read_bank_statement()
@@ -45,30 +45,30 @@ class CreditCard(object):
 
     def read_bank_statement(self):
         pdf_file_object = open(self.filename, 'rb')
-        print(f'Opened file [{self.filename}]')
+        print(f'  Opened file [{self.filename}]')
         # pdf_reader = PyPDF2.PdfFileReader(pdf_file_object)
         pdf_reader = PyPDF2.PdfReader(pdf_file_object)
-        print(f'Read [{self.filename}] PDF contents')
+        print(f'  Read [{self.filename}] PDF contents')
         # Check if the PDF is encrypted
         if pdf_reader.is_encrypted:
             try:
                 # Try to decrypt the PDF with the provided password
                 pdf_reader.decrypt(self.get_env_variable(".env", "CC"))
             except Exception as e:
-                print(f"Failed to decrypt PDF: {e}")
+                print(f"  Failed to decrypt PDF: {e}")
                 return None
         return pdf_reader
 
     def get_number_of_pages(self):
         # np = self.pdfreader.numPages
         np = len(self.pdfreader.pages)
-        print(f'Identifying number of pages')
+        print(f'\n Identifying number of pages in Bank Statement')
         return np
 
     def get_contents_page(self, num):
         pgobj = self.pdfreader.pages[num]
         pg = pgobj.extract_text()
-        print(f'Retrieved contents of page {num}')
+        print(f' Retrieved contents of page {num}')
         return pg
 
     def return_date(self, string):
@@ -149,32 +149,71 @@ class Persistence(object):
 
     def __init__(self):
         self.con = duckdb.connect(database='persist.duckdb', read_only=False)
-        self.categories = self.read_table_to_dataframe("categories")
+        self.categories = None
+        self.expenses = None
+        self.payments = None
+        self.configure_persistence()
 
-    def read_table_to_dataframe(self, table_name):
+    def read_table(self, table_name):
         # Execute a query to fetch the table contents into a DataFrame
         df = self.con.execute(f"SELECT * FROM {table_name}").df()
         # Close the connection and return dataframe
         # self.con.close()
         return df
 
+    def configure_persistence(self):
+        print("\nPERSISTENCE:\n Configuring data persistence")
+        self.categories = self.read_table("categories")
+        self.expenses = self.read_table("expenses")
+        self.payments = self.read_table("payments")
+
+        self.expenses["amount"] = self.expenses["amount"].apply(lambda x: round(x, 2))
+        self.payments["amount"] = self.payments["amount"].apply(lambda x: round(x, 2))
+
+        return
+
     def add_transactions(self, transactions: CreditCard):
-        next_expenses_id = self.con.sql("select max(id)+1 from {}".format("expenses")).fetchone()[0]
-        # existing data - from DuckDB to dataframe
-        existing_expenses = self.con.sql("SELECT * FROM expenses").df()
-        existing_payments = self.con.sql("SELECT * FROM payments").df()
-        # new_transactions = self.read_table_to_dataframe(table)
-        existing_expenses["amount"] = existing_expenses["amount"].apply(lambda x: round(x, 2))
-        # compare existing with the new dataframe and take only the differences
-        new_expenses = pd.merge(transactions.expenses, existing_expenses,
-                                how="left", on=["date", "card", "transaction", "amount"],
+        # get the next IDs
+        next_expenses_id = self.expenses["id"].idxmax() + 1
+        next_payments_id = self.payments["id"].idxmax() + 1
+
+        # find the new entries: Expenses
+        new_expenses = pd.merge(transactions.expenses, self.expenses, how="left",
+                                on=["date", "card", "transaction", "amount"],
                                 indicator=True)
         new_expenses = new_expenses[new_expenses["_merge"] == "left_only"][["date", "card", "transaction", "amount"]]
         new_expenses = new_expenses.sort_values("date")
         new_expenses = new_expenses.reset_index(drop=True)
         new_expenses["id"] = new_expenses.index + next_expenses_id
+        # Payments
+        new_payments = pd.merge(transactions.payments, self.payments, how="left",
+                                on=["date", "transaction", "amount"],
+                                indicator=True)
+        new_payments = new_payments[new_payments["_merge"] == "left_only"][["date", "transaction", "amount"]]
+        new_payments = new_payments.sort_values("date")
+        new_payments = new_payments.reset_index(drop=True)
+        new_payments["id"] = new_payments.index + next_payments_id
 
-        return new_expenses
+        # Insert them if exist
+        if len(new_expenses) > 0:
+            print(" Inserting new expenses")
+            self.con.sql("insert into expenses by name select * from new_expenses")
+        else:
+            print(" No expenses to insert")
+
+        if len(new_payments) > 0:
+            print(" Inserting new payments")
+            self.con.sql("insert into payments by name select * from new_payments")
+        else:
+            print(" No payments to insert")
+
+        return
+
+    def get_new_transactions(self):
+        pass
+
+    def uncategorised_entries(self):
+        pass
 
     def assign(self):
         pass
@@ -201,27 +240,24 @@ def main():
     print('\n===========================================================================')
     print('                                 Scrooge')
     print('===========================================================================\n')
-    statement = ".data/2406 Email Statement.pdf"
-    # pdf_file_object = open(statement, 'rb')
-    #
-    # pdf_reader = PyPDF2.PdfReader(pdf_file_object)
-    # print(f"pdf_reader.is_encrypted: {pdf_reader.is_encrypted}")
-    #
-    # pwd = Cc(statement).get_env_variable(".env", "CC")
-    # print(f"Password: {pwd}\n")
+
+    # Get the bank statement file
+    # statement = ".data/2406 Email Statement.pdf"
+    bank_statement = input(" Enter the Credit Card Bank Statement to import: \n  ")
 
     # Create Credit Card instance
-    # cc1 = Cc(FILE_PATH)
-    cc1 = CreditCard(statement)
+    cc = CreditCard(bank_statement)
 
-    print(f"Number of pages: {cc1.num_pages}")
-    # print contents
-    # [print(i) for i in cc1.rawexpenses]
+    # Create the Persistence instance
+    persist = Persistence()
+
+    # Add the new entries
+    persist.add_transactions(cc)
     print('\n---------------------------------------\n')
     # [print(i) for i in cc1.processed]
     print('\n=========================== END OF PROGRAM ==============================--\n')
 
-    return cc1
+    return
 
 
 # main, calling main loop
