@@ -7,7 +7,7 @@
 # Usage:
 # $ python3 scrooge.py
 #########################################################################################
-__version__ = 1.508
+__version__ = 1.509
 
 # import libraries
 import os
@@ -388,6 +388,8 @@ class Persistence(object):
         print(" Refreshing data")
         self.configure_persistence()
         return
+
+
 
 
 # main loop
