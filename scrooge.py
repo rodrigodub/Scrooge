@@ -2,12 +2,12 @@
 # Scrooge
 # Automation of Mastercard statement .data extraction and classification
 # Author: Rodrigo Nobrega
-# 20150407-20240804
+# 20150407-20240831
 #
 # Usage:
 # $ python3 scrooge.py
 #########################################################################################
-__version__ = 1.509
+__version__ = 1.511
 
 # import libraries
 import os

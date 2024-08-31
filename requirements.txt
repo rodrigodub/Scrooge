@@ -1,0 +1,12 @@
+duckdb
+numpy
+pandas
+pip
+PyPDF2
+python-dateutil
+python-dotenv
+pytz
+six
+tzdata
+shiny
+seaborn

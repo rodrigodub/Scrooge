@@ -1,0 +1,1 @@
+/Users/rodrigo/Code/Scrooge/venv/bin/python -m shiny run --port 60881 --reload --autoreload-port 60882 shiny/app.py
