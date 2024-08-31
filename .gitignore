@@ -24,3 +24,5 @@ __pycache__/scrooge.cpython-311.pyc
 persist.duckdb
 persist.duckdb.wal
 .idea/misc.xml
+.idea/misc.xml
+shiny/__pycache__/shared.cpython-312.pyc

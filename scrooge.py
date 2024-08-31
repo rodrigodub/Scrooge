@@ -7,7 +7,7 @@
 # Usage:
 # $ python3 scrooge.py
 #########################################################################################
-__version__ = 1.511
+__version__ = 1.512
 
 # import libraries
 import os
